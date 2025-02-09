@@ -7,15 +7,16 @@ def model(processed_data_df, year):
     cpi_df = pd.read_csv(DATA_PATH + 'cpi_data.csv')
     cpi_reference = cpi_df[cpi_df['year'] == 2023]['cpi_index'].values
     # import the models
-    loaded_models = joblib.load(DATA_PATH + 'models.pkl')
+    financial_models = joblib.load(DATA_PATH + 'financial_models.pkl')
+    artistic_models = joblib.load(DATA_PATH + 'artistic_models.pkl')
     # financial
-    best_grossWorldwide_model = loaded_models['best_grossWorldwide_model']
-    best_openingWeekendGross = loaded_models['best_openingWeekendGross']
+    best_grossWorldwide_model = financial_models['best_grossWorldwide_model']
+    best_openingWeekendGross = financial_models['best_openingWeekendGross']
     # critique
-    best_wins_model = loaded_models['best_wins_model']
-    best_nominations_model = loaded_models['best_nominations_model']
-    best_meta_score_model = loaded_models['best_meta_score_model']
-    best_IMBD_Rating_model = loaded_models['best_IMBD_Rating_model']
+    best_wins_model = artistic_models['best_wins_model']
+    best_nominations_model = artistic_models['best_nominations_model']
+    best_meta_score_model = artistic_models['best_meta_score_model']
+    best_IMBD_Rating_model = artistic_models['best_IMBD_Rating_model']
     # Predict assuming using all features
     # financial
     predicted_openingWeekendGross = best_openingWeekendGross.predict(processed_data_df)
