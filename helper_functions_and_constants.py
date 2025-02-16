@@ -1,40 +1,54 @@
+import joblib
+import numpy as np
 import pandas as pd
 
-
-DATA_PATH = 'data/'
+DATA_PATH = "data/"
+DFS = {
+    "actors_df": pd.read_csv(DATA_PATH + "Actors_data.csv"),
+    "Writers_df": pd.read_csv(DATA_PATH + "Writers_data.csv"),
+    "prod_df": pd.read_csv(DATA_PATH + "Production_companies_data.csv"),
+    "loaded_objects": joblib.load(DATA_PATH + "preprocessing_objects.pkl"),
+    "cpi_df": pd.read_csv(DATA_PATH + "cpi_data.csv"),
+    "directors_df": pd.read_csv(DATA_PATH + "Directors_data.csv"),
+    "financial_models": joblib.load(DATA_PATH + "financial_models.pkl"),
+    "artistic_models": joblib.load(DATA_PATH + "artistic_models.pkl"),
+}
 
 
 def get_season(month):
     if month in [1, 2]:
-        return 'Beginning of the year'
+        return "Beginning of the year"
     elif month in [3, 4, 5]:
-        return 'Spring'
+        return "Spring"
     elif month in [6, 7, 8]:
-        return 'Summer'
+        return "Summer"
     elif month in [9, 10, 11]:
-        return 'Autumn'
+        return "Autumn"
     elif month == 12:
-        return 'End of the year'
+        return "End of the year"
     else:
         return np.nan
 
 
-def ignore_inflation(value, year, cpi_reference, cpi_df):
+def ignore_inflation(value, year, cpi_reference):
     if year > 2023:
         year = 2023
-    cpi_year = cpi_df[cpi_df['year'] == year[0]]['cpi_index'].values
+
+    cpi_df = DFS["cpi_df"]
+    cpi_year = cpi_df[cpi_df["year"] == year]["cpi_index"].values
     return value * (cpi_reference / cpi_year[0])
 
 
 def rescale(value, year, cpi_reference, cpi_df):
     if year > 2023:
         year = 2023
-    cpi_year = cpi_df[cpi_df['year'] == year[0]]['cpi_index'].values
+    cpi_year = cpi_df[cpi_df["year"] == year]["cpi_index"].values
     return value / (cpi_reference / cpi_year[0])
 
 
 def calculate_film_weight_normalized(actors_list):
-    actors_df = pd.read_csv(DATA_PATH + 'Actors_data.csv')
+    actors_df = DFS["actors_df"]
+
     total_weight = 0
     for idx, actor in enumerate(actors_list):
         if idx < 3:
@@ -42,22 +56,31 @@ def calculate_film_weight_normalized(actors_list):
         else:
             Ci = 0.9 ** (idx - 3)
 
-        Wi = (actors_df[actors_df['Actor'].str.lower() == str(actor).strip().lower()]['weight'].values[0]
-              if str(actor).strip().lower() in actors_df['Actor'].str.lower().values
-              else 0)
-        # print(actor, Wi)
+        Wi = (
+            actors_df[actors_df["Actor"].str.lower() == str(actor).strip().lower()][
+                "weight"
+            ].values[0]
+            if str(actor).strip().lower() in actors_df["Actor"].str.lower().values
+            else 0
+        )
+
         total_weight += Wi * Ci
     N = len(actors_list)
     return total_weight / N if N > 0 else 0
 
 
 def calculate_film_weight_normalized_writers(writers_list):
-    writers_df = pd.read_csv(DATA_PATH + 'Writers_data.csv')
+    writers_df = DFS["Writers_df"]
+
     total_weight = 0
     for idx, writer in enumerate(writers_list):
-        Wi = (writers_df[writers_df['Writer'].str.lower() == str(writer).strip().lower()]['WriterWeight'].values[0]
-              if str(writer).strip().lower() in writers_df['Writer'].str.lower().values
-              else 0)
+        Wi = (
+            writers_df[writers_df["Writer"].str.lower() == str(writer).strip().lower()][
+                "WriterWeight"
+            ].values[0]
+            if str(writer).strip().lower() in writers_df["Writer"].str.lower().values
+            else 0
+        )
         total_weight += Wi
 
     N = len(writers_list)
@@ -65,7 +88,8 @@ def calculate_film_weight_normalized_writers(writers_list):
 
 
 def calculate_film_weight_normalized_production_companies(production_list):
-    prod_df = pd.read_csv(DATA_PATH + 'Production_companies_data.csv')
+    prod_df = DFS["prod_df"]
+
     total_weight = 0
     Ci = 0
     list_length = len(production_list)
@@ -80,11 +104,52 @@ def calculate_film_weight_normalized_production_companies(production_list):
             elif idx == 1 or idx == 2:
                 Ci = 0.1
 
-        Wi = (prod_df[prod_df['Company'].str.lower() == str(production).strip().lower()]['Production-Weight'].values[0]
-              if str(production).strip().lower() in prod_df['Company'].str.lower().values
-              else 0)
-        # print(production, Wi)
+        Wi = (
+            prod_df[prod_df["Company"].str.lower() == str(production).strip().lower()][
+                "Production-Weight"
+            ].values[0]
+            if str(production).strip().lower() in prod_df["Company"].str.lower().values
+            else 0
+        )
         total_weight += Wi * Ci
 
     N = len(production_list)
     return total_weight / N if N > 0 else 0
+
+
+def format_genres(genre):
+    formatted_genre = []
+    for g in genre:
+        if g in ['Horror', 'Thriller']:
+            formatted_genre.append('Horror & Thriller')
+        elif g in ['Action', 'Adventure']:
+            formatted_genre.append('Action & Adventure')
+        elif g in ['Sci-Fi', 'Fantasy']:
+            formatted_genre.append('Sci-Fi & Fantasy')
+        elif g in ['Family', 'Animation']:
+            formatted_genre.append('Family & Animation')
+        elif g in ['Documentary', 'Biography']:
+            formatted_genre.append('Documentary & Biography')
+        elif g in 'Other':
+            formatted_genre.append('other_genres')
+        else:
+            formatted_genre.append(g)
+
+    return list(set(formatted_genre))
+
+
+def format_countries(country):
+    formatted_countries = []
+    for c in country:
+        if c in ['Spain', 'France', 'Italy',
+                 'Turkey', 'Nordic countries', 'Russia',
+                 'Switzerland', 'Other european countries'
+                 ]:
+            formatted_countries.append('European countries')
+        elif c in ['South Korea', 'arabian countries', 'Latino countries',
+                   'Other asian countries', 'Other']:
+            formatted_countries.append('Other_regions')
+        else:
+            formatted_countries.append(c)
+
+    return list(set(formatted_countries))
